@@ -22,7 +22,6 @@
 // удалить цикл обхода при включенной оптимизации -O1
 volatile int sink = 0;
 
-#ifdef __linux__
 static int pin_to_performance_core(void) {
     unsigned int eax, ebx, ecx, edx;
     // CPUID.07H.0H:EDX[15] указывает на гибридную архитектуру Intel.
@@ -59,7 +58,6 @@ static int pin_to_performance_core(void) {
     fprintf(stderr, "No accessible Intel P-core for the benchmark\n");
     return -1;
 }
-#endif
 
 // 1. Прямой обход: 0 -> 1 -> 2 -> ... -> N-1 -> 0
 void fill_forward(int *arr, size_t n) {
@@ -127,11 +125,9 @@ double measure(int *arr, size_t n, size_t k_passes, int repeats) {
 }
 
 int main(void) {
-#ifdef __linux__
     if (pin_to_performance_core() == -1) {
         return EXIT_FAILURE;
     }
-#endif
 
     srand((unsigned int)time(NULL));
 
