@@ -1,7 +1,16 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
+
+#ifdef __linux__
+#include <cpuid.h>
+#include <sched.h>
+#endif
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -12,6 +21,45 @@
 // Глобальная переменная с квалификатором volatile не дает компилятору
 // удалить цикл обхода при включенной оптимизации -O1
 volatile int sink = 0;
+
+#ifdef __linux__
+static int pin_to_performance_core(void) {
+    unsigned int eax, ebx, ecx, edx;
+    // CPUID.07H.0H:EDX[15] указывает на гибридную архитектуру Intel.
+    if (!__get_cpuid_count(0x07, 0, &eax, &ebx, &ecx, &edx)
+        || !(edx & (1u << 15))) {
+        return 0;
+    }
+
+    cpu_set_t allowed;
+    if (sched_getaffinity(0, sizeof(allowed), &allowed) == -1) {
+        perror("sched_getaffinity");
+        return -1;
+    }
+
+    for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+        if (!CPU_ISSET(cpu, &allowed)) {
+            continue;
+        }
+        cpu_set_t affinity;
+        CPU_ZERO(&affinity);
+        CPU_SET(cpu, &affinity);
+        if (sched_setaffinity(0, sizeof(affinity), &affinity) == -1) {
+            continue;
+        }
+
+        // Тип ядра определяем на самом проверяемом CPU. 40H — Intel Core (P-ядро).
+        if (__get_cpuid_count(0x1a, 0, &eax, &ebx, &ecx, &edx)
+            && (eax >> 24) == 0x40) {
+            fprintf(stderr, "Benchmark CPU: %d (P-core)\n", cpu);
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "No accessible Intel P-core for the benchmark\n");
+    return -1;
+}
+#endif
 
 // 1. Прямой обход: 0 -> 1 -> 2 -> ... -> N-1 -> 0
 void fill_forward(int *arr, size_t n) {
@@ -79,6 +127,12 @@ double measure(int *arr, size_t n, size_t k_passes, int repeats) {
 }
 
 int main(void) {
+#ifdef __linux__
+    if (pin_to_performance_core() == -1) {
+        return EXIT_FAILURE;
+    }
+#endif
+
     srand((unsigned int)time(NULL));
 
     // Границы: от 1 КБ (256 элементов int) до 64 МБ (16 777 216 элементов int)
