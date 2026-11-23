@@ -82,11 +82,9 @@ int main(int argc, char** argv) {
         print_matrix("Обратная матрица A^-1 (BLAS)", A_inv, N);
     }
 
-    printf("[BLAS]   N = %d, M = %d | Time: %.4f s", N, M, t2 - t1);
-    if (N <= 512) {
-        printf(" | Residual ||A*A^-1 - I||_inf: %e", compute_residual(A, A_inv, N));
-    }
-    printf("\n");
+    float residual = compute_residual(A, A_inv, N);
+    printf("[BLAS]   N = %d, M = %d | Time: %.4f s | Residual ||A*A^-1 - I||_inf: %e\n",
+           N, M, t2 - t1, residual);
 
     free(A);
     free(A_inv);

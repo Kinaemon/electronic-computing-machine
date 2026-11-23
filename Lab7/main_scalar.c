@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef VARIANT_NAME
+#define VARIANT_NAME "Scalar"
+#endif
+
 static void matmul_scalar(const float* restrict A, const float* restrict B, float* restrict C, int N) {
     zero_matrix(C, N);
     for (int i = 0; i < N; ++i) {
@@ -89,14 +93,12 @@ int main(int argc, char** argv) {
     double t2 = get_time_sec();
 
     if (interactive && N <= 16) {
-        print_matrix("Обратная матрица A^-1 (Scalar)", A_inv, N);
+        print_matrix("Обратная матрица A^-1 (" VARIANT_NAME ")", A_inv, N);
     }
 
-    printf("[Scalar] N = %d, M = %d | Time: %.4f s", N, M, t2 - t1);
-    if (N <= 512) {
-        printf(" | Residual ||A*A^-1 - I||_inf: %e", compute_residual(A, A_inv, N));
-    }
-    printf("\n");
+    float residual = compute_residual(A, A_inv, N);
+    printf("[" VARIANT_NAME "] N = %d, M = %d | Time: %.4f s | Residual ||A*A^-1 - I||_inf: %e\n",
+           N, M, t2 - t1, residual);
 
     free(A);
     free(A_inv);

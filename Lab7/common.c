@@ -124,6 +124,10 @@ float compute_residual(const float* A, const float* A_inv, int N) {
         for (int j = 0; j < N; ++j) {
             row_err += fabsf(prod[i * N + j]);
         }
+        if (!isfinite(row_err)) {
+            max_err = INFINITY;
+            break;
+        }
         if (row_err > max_err) {
             max_err = row_err;
         }
